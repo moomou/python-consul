@@ -36,16 +36,15 @@ class HTTPClient:
             return uri
         return '%s?%s' % (uri, urllib.parse.urlencode(params))
 
-    @asyncio.coroutine
-    def _request(self, callback, method, uri, data=None):
-        resp = yield from aiohttp.request(method, uri,
-                                          connector=self._connector,
-                                          data=data, loop=self._loop)
-        body = yield from resp.text(encoding='utf-8')
-        if resp.status == 599:
-            raise base.Timeout
-        r = base.Response(resp.status, resp.headers, body)
-        return callback(r)
+    async def _request(self, callback, method, uri, data=None):
+        async with aiohttp.request(method, uri,
+                                   connector=self._connector,
+                                   data=data, loop=self._loop) as resp:
+            if resp.status == 599:
+                raise base.Timeout
+            body = await resp.text(encoding='utf-8')
+            r = base.Response(resp.status, resp.headers, body)
+            return callback(r)
 
     # python prior 3.4.1 does not play nice with __del__ method
     if PY_341:  # pragma: no branch
